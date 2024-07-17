@@ -40,7 +40,7 @@ def handle_join_game(data):
     username = data['username']
     join_room(game_code)
     games[game_code]['players'].append(username)
-    emit('player_joined', {'username': username}, room=game_code)
+    emit('player_joined', {'username': username, 'players': games[game_code]['players']}, room=game_code)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
