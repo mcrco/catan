@@ -8,57 +8,41 @@ const socket = io();
 function Game() {
     const { gameCode } = useParams();
     const [username, setUsername] = useState('');
+    const [userId, setUserId] = useState('')
     const [ready, setReady] = useState(false);
     const [players, setPlayers] = useState([]);
-
-    // useEffect(() => {
-    //     socket.emit('join_game', { game_code: gameCode, username: 'Player' });
-
-    //     socket.on('player_joined', (data) => {
-    //         setPlayers((prevPlayers) => [...prevPlayers, data.username]);
-    //     });
-
-    // const app = new PIXI.Application({ width: 800, height: 600 });
-    // document.body.appendChild(app.view);
-
-    // const graphics = new PIXI.Graphics();
-    // graphics.beginFill(0xde3249);
-    // graphics.drawRect(50, 50, 100, 100);
-    // graphics.endFill();
-    // app.stage.addChild(graphics);
-
-    // return () => {
-    //     app.destroy(true, true);
-    // };
-    // }, [gameCode]);
 
     const handleReadyButton = () => {
         socket.emit('join_game', { game_code: gameCode, username: username });
 
         socket.on('player_joined', (data) => {
+            setUserId(data.player.userId)
             setPlayers(data.players);
             setReady(true)
         });
+    }
+
+    if (!ready) {
+        return (
+            <div>
+                <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter username"
+                />
+                <button onClick={handleReadyButton}>Ready</button>
+            </div>
+        );
     }
 
     return (
         <div>
             <h1>Game Code: {gameCode}</h1>
             <h2>Players:</h2>
-            {!ready &&
-                <>
-                    <input
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Enter username"
-                    />
-                    <button onClick={handleReadyButton}>Ready</button>
-                </>
-            }
             <ul>
                 {players.map((player, index) => (
-                    <li key={index}>{player}</li>
+                    <li key={index}>{player.username}</li>
                 ))}
             </ul>
         </div>
