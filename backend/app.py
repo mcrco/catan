@@ -3,6 +3,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 import os
 import random
 import string
+import uuid
 
 app = Flask(__name__, static_folder='../frontend/dist')
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -38,9 +39,15 @@ def serve(path):
 def handle_join_game(data):
     game_code = data['game_code']
     username = data['username']
+    userId = uuid.uuid4()
+    player = {'username': username, 'userId': str(userId)}
     join_room(game_code)
-    games[game_code]['players'].append(username)
-    emit('player_joined', {'username': username, 'players': games[game_code]['players']}, room=game_code)
+
+    # set first person to join room as host
+    if len(games[game_code]['players']) == 0:
+        games[game_code]['host'] = player
+    games[game_code]['players'].append(player)
+    emit('player_joined', {'player': player, 'players': games[game_code]['players']}, room=game_code)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
