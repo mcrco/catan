@@ -1,5 +1,4 @@
 import random
-import matplotlib
 
 # CONSTANTS
 num_hexes = 19
@@ -100,8 +99,8 @@ def generate_board():
 
     return board
 
-
-board = generate_board()
-while not is_valid_board(board):
+def generate_valid_board():
     board = generate_board()
-
+    while not is_valid_board(board):
+        board = generate_board()
+    return board
