@@ -1,2 +1,2 @@
 # catan
-catan web game
+catan web game. WIP
