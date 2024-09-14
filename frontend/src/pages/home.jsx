@@ -11,18 +11,8 @@ function Home() {
         navigate(`/game/${data.game_code}`);
     };
 
-    const joinGame = async () => {
-        const response = await fetch('/api/join_game', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ game_code: gameCode }),
-        });
-        const data = await response.json();
-        if (data.success) {
-            navigate(`/game/${gameCode}`);
-        } else {
-            alert(data.message);
-        }
+    const joinGame = () => {
+        navigate(`/game/${gameCode}`)
     };
 
     return (
