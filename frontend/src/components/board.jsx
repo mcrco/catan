@@ -1,84 +1,189 @@
-import React, { useRef, useEffect } from 'react';
-import * as PIXI from 'pixi.js';
+import React from "react";
+import { Stage, Container, Graphics, Text } from "@pixi/react";
+import * as PIXI from "pixi.js";
 
-const hexRadius = 50; // Adjust radius for hex size
-const hexHeight = Math.sqrt(3) * hexRadius; // Height of the hexagon
+const HEX_RADIUS = 80;
+const HEX_HEIGHT = HEX_RADIUS * Math.sqrt(3);
+const HEX_WIDTH = HEX_RADIUS * 2;
+
+// Hardcoded coordinates for each hex
+const HEX_POSITIONS = [
+    // Row 1
+    { x: -Math.sqrt(3) * HEX_RADIUS, y: -3 * HEX_RADIUS },
+    { x: 0, y: -3 * HEX_RADIUS },
+    { x: Math.sqrt(3) * HEX_RADIUS, y: -3 * HEX_RADIUS },
+    // Row 2
+    { x: -1.5 * Math.sqrt(3) * HEX_RADIUS, y: -1.5 * HEX_RADIUS },
+    { x: -0.5 * Math.sqrt(3) * HEX_RADIUS, y: -1.5 * HEX_RADIUS },
+    { x: 0.5 * Math.sqrt(3) * HEX_RADIUS, y: -1.5 * HEX_RADIUS },
+    { x: 1.5 * Math.sqrt(3) * HEX_RADIUS, y: -1.5 * HEX_RADIUS },
+    // Row 3
+    { x: -2 * Math.sqrt(3) * HEX_RADIUS, y: 0 },
+    { x: -Math.sqrt(3) * HEX_RADIUS, y: 0 },
+    { x: 0, y: 0 },
+    { x: Math.sqrt(3) * HEX_RADIUS, y: 0 },
+    { x: 2 * Math.sqrt(3) * HEX_RADIUS, y: 0 },
+    // Row 4
+    { x: -1.5 * Math.sqrt(3) * HEX_RADIUS, y: 1.5 * HEX_RADIUS },
+    { x: -0.5 * Math.sqrt(3) * HEX_RADIUS, y: 1.5 * HEX_RADIUS },
+    { x: 0.5 * Math.sqrt(3) * HEX_RADIUS, y: 1.5 * HEX_RADIUS },
+    { x: 1.5 * Math.sqrt(3) * HEX_RADIUS, y: 1.5 * HEX_RADIUS },
+    // Row 5
+    { x: -Math.sqrt(3) * HEX_RADIUS, y: 3 * HEX_RADIUS },
+    { x: 0, y: 3 * HEX_RADIUS },
+    { x: Math.sqrt(3) * HEX_RADIUS, y: 3 * HEX_RADIUS },
+];
+
+// Hardcoded coordinates for settlement vertices
+const VERTEX_POSITIONS = [
+    // Top row
+    { x: 0, y: (-3 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: HEX_RADIUS, y: (-2.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 2 * HEX_RADIUS, y: (-2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    // Second row
+    { x: -1.5 * HEX_RADIUS, y: (-2.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -0.5 * HEX_RADIUS, y: (-2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 0.5 * HEX_RADIUS, y: (-1.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 1.5 * HEX_RADIUS, y: (-1 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 2.5 * HEX_RADIUS, y: (-0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    // Third row
+    { x: -3 * HEX_RADIUS, y: (-2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -2 * HEX_RADIUS, y: (-1.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -HEX_RADIUS, y: (-HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 0, y: (-0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: HEX_RADIUS, y: 0 },
+    { x: 2 * HEX_RADIUS, y: (0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 3 * HEX_RADIUS, y: (HEX_RADIUS * Math.sqrt(3)) / 2 },
+    // Fourth row
+    { x: -3.5 * HEX_RADIUS, y: (-0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -2.5 * HEX_RADIUS, y: 0 },
+    { x: -1.5 * HEX_RADIUS, y: (0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -0.5 * HEX_RADIUS, y: (HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 0.5 * HEX_RADIUS, y: (1.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 1.5 * HEX_RADIUS, y: (2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 2.5 * HEX_RADIUS, y: (2.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 3.5 * HEX_RADIUS, y: (3 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    // Fifth row
+    { x: -4 * HEX_RADIUS, y: (HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -3 * HEX_RADIUS, y: (2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -2 * HEX_RADIUS, y: (2.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -HEX_RADIUS, y: (3 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 0, y: (3.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: HEX_RADIUS, y: (4 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 2 * HEX_RADIUS, y: (4.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    // Bottom row
+    { x: -3.5 * HEX_RADIUS, y: (3.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -2.5 * HEX_RADIUS, y: (4 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -1.5 * HEX_RADIUS, y: (4.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: -0.5 * HEX_RADIUS, y: (5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+    { x: 0.5 * HEX_RADIUS, y: (5.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
+];
 
 const CatanBoard = ({ board }) => {
-    const pixiContainer = useRef(null);
+    let hexes = board.hexes.map((hex, index) => (
+        <Container
+            key={`hex-${index}`}
+            x={HEX_POSITIONS[index].x}
+            y={HEX_POSITIONS[index].y}
+        >
+            <Hexagon resource={hex.resource} />
+            {hex.number && <HexNumber number={hex.number} />}
+        </Container>
+    ));
 
-    useEffect(() => {
-        const app = new PIXI.Application({
-            view: pixiContainer.current,
-            width: hexRadius * 10,
-            height: hexHeight * 5,
-        });
+    let settlements = board.settlements.map((settlement, index) => (
+        <Settlement
+            key={`vertex-${index}`}
+            x={VERTEX_POSITIONS[settlement.position].x}
+            y={VERTEX_POSITIONS[settlement.position].y}
+            color={settlements[index] ? settlements[index].color : 0xffffff}
+            isOccupied={!!settlements[index]}
+        />
+    ));
+    return (
+        <Stage
+            width={1200}
+            height={800}
+            options={{ backgroundColor: 0x1099bb }}
+        >
+            <Container x={600} y={400}>
+                {hexes}
+                {settlements}
+            </Container>
+        </Stage>
+    );
+};
 
-        const drawHex = (x, y, color) => {
-            const hexagon = new PIXI.Graphics();
-            hexagon.beginFill(color);
-            hexagon.moveTo(hexRadius, 0);
+const Hexagon = ({ resource }) => {
+    return (
+        <Graphics
+            draw={(g) => {
+                g.clear();
+                g.lineStyle(2, 0x000000, 1); // width: 2, color: black, alpha: 1
+                g.beginFill(getHexColor(resource));
+                // Calculate the coordinates for a vertical hexagon
+                const verticalHexPoints = [];
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i * 60 + 30) * (Math.PI / 180); // 30 degrees offset to make it vertical
+                    verticalHexPoints.push(
+                        HEX_RADIUS * Math.cos(angle),
+                        HEX_RADIUS * Math.sin(angle)
+                    );
+                }
+                g.drawPolygon(verticalHexPoints);
+                g.endFill();
+            }}
+        />
+    );
+};
 
-            for (let i = 0; i < 6; i++) {
-                hexagon.lineTo(
-                    hexRadius * Math.cos((Math.PI / 3) * i),
-                    hexRadius * Math.sin((Math.PI / 3) * i)
-                );
+const HexNumber = ({ number }) => {
+    return (
+        <Text
+            text={number.toString()}
+            anchor={0.5}
+            style={
+                new PIXI.TextStyle({
+                    fontFamily: "Arial",
+                    fontSize: 24,
+                    fill: 0xffffff,
+                    align: "center",
+                })
             }
-            hexagon.endFill();
-            hexagon.x = x;
-            hexagon.y = y;
-            app.stage.addChild(hexagon);
-        };
+        />
+    );
+};
 
-        const hexPositions = [
-            [0, 0],
-            [-1.5, 1],
-            [1.5, 1],
-            [-3, 2],
-            [-1.5, 2],
-            [0, 2],
-            [1.5, 2],
-            [-2.25, 3],
-            [-0.75, 3],
-            [0.75, 3],
-            [2.25, 3],
-            [-1.5, 4],
-            [1.5, 4],
-            [-1.5, 5],
-            [1.5, 5],
-            [0, 6],
-            [0, 4.5],
-            [0, 1.5],
-            [0, 0],
-        ];
-
-        hexPositions.forEach((position, index) => {
-            const { resource } = board.hexes[index];  // Get resource based on index
-            const color = getColor(resource);
-            const x = position[0] * hexRadius * 1.5; // Adjust for x position
-            const y = position[1] * hexHeight + (position[0] % 2) * (hexHeight / 2); // Adjust for y position
-            
-            drawHex(x, y, color);
-        });
-
-        return () => {
-            app.destroy(true, { children: true }); // Clean up the app on unmount
-        };
-    }, [board]);
-
-    const getColor = (resource) => {
-        const colors = {
-            wood: 0x8B4513,
-            brick: 0xCD5C5C,
-            sheep: 0x7CFC00,
-            wheat: 0xFFD700,
-            ore: 0xA9A9A9,
-        };
-        return colors[resource] || 0xFFFFFF; // Default to white if not found
+function getHexColor(resource) {
+    const colorMap = {
+        wood: 0x228b22,
+        brick: 0x8b4513,
+        sheep: 0x90ee90,
+        wheat: 0xffd700,
+        ore: 0x708090,
+        desert: 0xf4a460,
     };
+    return colorMap[resource] || 0xffffff;
+}
 
-    return <canvas ref={pixiContainer} />;
+const Settlement = ({ x, y, color, isOccupied }) => {
+    return (
+        <Graphics
+            x={x}
+            y={y}
+            draw={(g) => {
+                g.clear();
+                if (isOccupied) {
+                    g.beginFill(color);
+                    g.drawCircle(0, 0, 5);
+                    g.endFill();
+                } else {
+                    g.lineStyle(2, 0xffffff);
+                    g.drawCircle(0, 0, 5);
+                }
+            }}
+        />
+    );
 };
 
 export default CatanBoard;

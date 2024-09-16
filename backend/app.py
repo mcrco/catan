@@ -3,7 +3,6 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 import os
 import random
 import string
-import sys
 import uuid
 from game.game import Game, Player
 
@@ -79,7 +78,7 @@ def handle_start_game(data):
     if user_id != game.host.id:
         return
 
-    if len(game.players) >= 2:  # Require at least 2 players
+    if len(game.players) >= 1:  # Require at least 2 players
         game.current_turn = 0
         for player in game.players:
             emit('game_update', game.to_dict(player.id), to=player.id)

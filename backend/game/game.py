@@ -1,4 +1,5 @@
 import random
+from game.board import generate_valid_board, display
 
 # Define resource types
 RESOURCES = ["wood", "brick", "sheep", "wheat", "ore", "desert"]
@@ -41,10 +42,30 @@ class Player:
 
 
 class Hex:
-    def __init__(self, resource, number=None):
+    def __init__(self, resource, number):
         self.resource = resource
         self.number = number
+        
+    def to_dict(self):
+        return {
+            'resource': self.resource,
+            'number': self.number
+        }
 
+class Settlement:
+    def __init__(self, player_id, player_name):
+        self.player_id = player_id
+        self.player_name = player_name
+        self.upgraded = False
+    
+    def upgrade(self):
+        self.upgraded = True
+
+    def to_dict(self):
+        return {
+            'playerName': self.player_name,
+            'upgraded': self.upgraded
+        }
 
 class Board:
     def __init__(self):
@@ -53,16 +74,10 @@ class Board:
         self.roads = []  # List of roads
 
     def setup_hexes(self):
-        # Randomize hex resources and numbers
+        board_dict = generate_valid_board()
         hexes = []
-        random.shuffle(RESOURCES)
-        number_iter = iter(NUMBERS)
-
-        for resource in RESOURCES:
-            if resource == "desert":
-                hexes.append(Hex(resource, number=None))
-            else:
-                hexes.append(Hex(resource, number=next(number_iter)))
+        for position, hex_data in board_dict.items():
+            hexes.append(Hex(hex_data['resource'], hex_data['value']))
         return hexes
 
     def place_settlement(self, player, location):
@@ -70,11 +85,21 @@ class Board:
         self.settlements[location] = player
         
     def to_dict(self):
+        settlements = []
+        for position, settlement in self.settlements:
+            settle_dict = settlement.to_dict()
+            settle_dict['position'] = position
+            settlements.append(settle_dict)
         return {
-            'hexes': [(hex.resource, hex.number) for hex in self.hexes],
-            'settlements': self.settlements,
+            'hexes': [hex.to_dict() for hex in self.hexes],
+            'settlements': settlements,
             'roads': self.roads
         }
+
+    def display(self):
+        board_dict = {i: {'resource': hex.resource, 'value': hex.number} for i, hex in enumerate(self.hexes)}
+        display('resource', board_dict)
+        display('value', board_dict)
 
 
 class Game:
