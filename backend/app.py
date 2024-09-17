@@ -5,6 +5,7 @@ import random
 import string
 import uuid
 from game.game import Game, Player
+from game.board import get_hexes_for_vertex
 
 app = Flask(__name__, static_folder='../frontend/dist')
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -13,6 +14,13 @@ games = {}
 
 def generate_game_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+def check_game_player(game_code, player_id):
+    if game_code not in games:
+        return False
+    game = games[game_code]
+    turn = game.current_turn
+    return player_id == game.players[turn % len(game.players)].id
 
 @app.route('/api/create_game', methods=['POST'])
 def create_game():
@@ -83,17 +91,64 @@ def handle_start_game(data):
         for player in game.players:
             emit('game_update', game.to_dict(player.id), to=player.id)
 
+@socketio.on('finish_turn')
+def finish_turn(data):
+    user_id = data['userId']
+    game_code = data['gameCode']
+    if not check_game_player(game_code, user_id):
+        return
+    
+    game = games[game_code]
+    game.current_turn += 1
+    for player in game.players:
+        emit('game_update', game.to_dict(player.id), to=player.id)
+
 @socketio.on('roll_dice')
 def roll_dice(data):
     user_id = data['userId']
     game_code = data['gameCode']
-    game = games.get(game_code, None)
-    if not game or user_id != game.host.id:
+    if not check_game_player(game_code, user_id):
         return
+
+    game = games.get(game_code, None)
 
     roll = game.roll_dice()
     game.distribute_resources(roll)
     
+    for player in game.players:
+        emit('game_update', game.to_dict(player.id), to=player.id)
+        
+@socketio.on('place_settlement')
+def place_settlement(data):
+    user_id = data['userId']
+    game_code = data['gameCode']
+    check_game_player(game_code, user_id)
+
+    try:
+        location = int(data['location'])
+    except ValueError:
+        return
+    
+    game = games[game_code]
+    player = game.get_player(user_id)
+
+    # check if player has resources for settlement
+    if (player.resources["wood"] < 1 or player.resources["brick"] < 1 or
+        player.resources["wheat"] < 1 or player.resources["sheep"] < 1):
+        # check that it's not the second settlement
+        if game.current_turn >= 2 * len(game.players) or len(player.settlements) > 1:
+            return
+        # check that it's not the first settlement
+        if game.current_turn >= len(game.players) or len(player.settlements) > 0:
+            return
+
+    game.board.place_settlement(user_id, player.name, location)
+    player.settlements.append(location)
+    if len(player.settlements) == 2:
+        for hex_index in get_hexes_for_vertex(location):
+            hex = game.board.hexes[hex_index]
+            player.collect_resources(hex.resource, 1)
+
     for player in game.players:
         emit('game_update', game.to_dict(player.id), to=player.id)
 

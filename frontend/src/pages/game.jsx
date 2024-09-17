@@ -62,19 +62,10 @@ function Game() {
     return (
         <div>
             <h1>Game Code: {gameCode}</h1>
-            <h2>Players:</h2>
-
-            {gameState.players && (
-                <ul>
-                    {gameState.players.map((player, index) => (
-                        <li key={index}>{player.name}</li>
-                    ))}
-                </ul>
-            )}
 
             {gameState && gameState.currentTurn >= 0 && (
                 <div>
-                    {gameState.board && <CatanBoard board={gameState.board} />}
+                    {gameState.board && <CatanBoard gameState={gameState} />}
                     <h2>Players and Points:</h2>
                     <ul>
                         {gameState.players.map((player, index) => (

@@ -1,10 +1,9 @@
 import React from "react";
 import { Stage, Container, Graphics, Text } from "@pixi/react";
 import * as PIXI from "pixi.js";
+import _ from "lodash";
 
 const HEX_RADIUS = 80;
-const HEX_HEIGHT = HEX_RADIUS * Math.sqrt(3);
-const HEX_WIDTH = HEX_RADIUS * 2;
 
 // Hardcoded coordinates for each hex
 const HEX_POSITIONS = [
@@ -34,52 +33,48 @@ const HEX_POSITIONS = [
     { x: Math.sqrt(3) * HEX_RADIUS, y: 3 * HEX_RADIUS },
 ];
 
-// Hardcoded coordinates for settlement vertices
-const VERTEX_POSITIONS = [
-    // Top row
-    { x: 0, y: (-3 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: HEX_RADIUS, y: (-2.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 2 * HEX_RADIUS, y: (-2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    // Second row
-    { x: -1.5 * HEX_RADIUS, y: (-2.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -0.5 * HEX_RADIUS, y: (-2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 0.5 * HEX_RADIUS, y: (-1.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 1.5 * HEX_RADIUS, y: (-1 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 2.5 * HEX_RADIUS, y: (-0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    // Third row
-    { x: -3 * HEX_RADIUS, y: (-2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -2 * HEX_RADIUS, y: (-1.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -HEX_RADIUS, y: (-HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 0, y: (-0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: HEX_RADIUS, y: 0 },
-    { x: 2 * HEX_RADIUS, y: (0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 3 * HEX_RADIUS, y: (HEX_RADIUS * Math.sqrt(3)) / 2 },
-    // Fourth row
-    { x: -3.5 * HEX_RADIUS, y: (-0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -2.5 * HEX_RADIUS, y: 0 },
-    { x: -1.5 * HEX_RADIUS, y: (0.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -0.5 * HEX_RADIUS, y: (HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 0.5 * HEX_RADIUS, y: (1.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 1.5 * HEX_RADIUS, y: (2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 2.5 * HEX_RADIUS, y: (2.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 3.5 * HEX_RADIUS, y: (3 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    // Fifth row
-    { x: -4 * HEX_RADIUS, y: (HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -3 * HEX_RADIUS, y: (2 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -2 * HEX_RADIUS, y: (2.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -HEX_RADIUS, y: (3 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 0, y: (3.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: HEX_RADIUS, y: (4 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 2 * HEX_RADIUS, y: (4.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    // Bottom row
-    { x: -3.5 * HEX_RADIUS, y: (3.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -2.5 * HEX_RADIUS, y: (4 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -1.5 * HEX_RADIUS, y: (4.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: -0.5 * HEX_RADIUS, y: (5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-    { x: 0.5 * HEX_RADIUS, y: (5.5 * HEX_RADIUS * Math.sqrt(3)) / 2 },
-];
+// Coordinates for settlement vertices based on hardcoded hex locations
+const VERTEX_POSITIONS = [];
+// Map between index of a hex and the indices of its vertices
+const VERTEX_ADJACENCIES = {};
 
-const CatanBoard = ({ board }) => {
+for (let i = 0; i < HEX_POSITIONS.length; i++) {
+    VERTEX_ADJACENCIES[i] = [];
+
+    // Calculate vertices of hexagon
+    for (let j = 0; j < 6; j++) {
+        const angle = (j * 60 + 30) * (Math.PI / 180); // 30 degrees offset to make it vertical
+        const point = {
+            x: HEX_POSITIONS[i].x + HEX_RADIUS * Math.cos(angle),
+            y: HEX_POSITIONS[i].y + HEX_RADIUS * Math.sin(angle),
+        };
+        // Check if vertex position is already in list using approximation
+        if (
+            !_.some(
+                VERTEX_POSITIONS,
+                (vertex) =>
+                    Math.abs(vertex.x - point.x) +
+                        Math.abs(vertex.y - point.y) <
+                    1e-5
+            )
+        ) {
+            VERTEX_POSITIONS.push(point);
+        }
+        // Check if vertex position is already in list using approximation
+        VERTEX_ADJACENCIES[i].push(
+            _.findIndex(
+                VERTEX_POSITIONS,
+                (vertex) =>
+                    Math.abs(vertex.x - point.x) +
+                        Math.abs(vertex.y - point.y) <
+                    1e-5
+            )
+        );
+    }
+}
+
+const CatanBoard = ({ gameState }) => {
+    let board = gameState.board;
     let hexes = board.hexes.map((hex, index) => (
         <Container
             key={`hex-${index}`}
@@ -91,13 +86,18 @@ const CatanBoard = ({ board }) => {
         </Container>
     ));
 
-    let settlements = board.settlements.map((settlement, index) => (
+    let settlements = board.vertices.map((vertex, index) => (
         <Settlement
             key={`vertex-${index}`}
-            x={VERTEX_POSITIONS[settlement.position].x}
-            y={VERTEX_POSITIONS[settlement.position].y}
-            color={settlements[index] ? settlements[index].color : 0xffffff}
-            isOccupied={!!settlements[index]}
+            x={VERTEX_POSITIONS[vertex.position].x}
+            y={VERTEX_POSITIONS[vertex.position].y}
+            color={
+                vertex.playerName
+                    ? _.find(gameState.players, { name: vertex.playerName })
+                          .color
+                    : 0xffffff
+            }
+            isOccupied={!!vertex.playerName}
         />
     ));
     return (

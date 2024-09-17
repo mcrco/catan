@@ -1,5 +1,5 @@
 import random
-from game.board import generate_valid_board, display
+from game.board import generate_valid_board, NUM_VERTICES, VERTEX_ADJACENCIES, get_hexes_for_vertex
 
 # Define resource types
 RESOURCES = ["wood", "brick", "sheep", "wheat", "ore", "desert"]
@@ -7,11 +7,13 @@ RESOURCES = ["wood", "brick", "sheep", "wheat", "ore", "desert"]
 # Define the numbers associated with each hex (excluding desert)
 NUMBERS = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
 
+COLORS = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00]
 
 class Player:
-    def __init__(self, name, id):
+    def __init__(self, name, id, color):
         self.name = name
         self.id = id
+        self.color = color
         self.resources = {"wood": 0, "brick": 0, "sheep": 0, "wheat": 0, "ore": 0}
         self.points = 0
         self.settlements = []
@@ -32,6 +34,7 @@ class Player:
     def to_dict(self, user_id):
         ret = {
             'name': self.name,
+            'color': self.color,
             'numResources': sum(self.resources.values()),
             'points': self.points
         }
@@ -42,27 +45,37 @@ class Player:
 
 
 class Hex:
-    def __init__(self, resource, number):
+    def __init__(self, index, resource, number):
+        self.index = index
         self.resource = resource
         self.number = number
+        self.robbed = False
         
     def to_dict(self):
         return {
+            'index': self.index,
             'resource': self.resource,
-            'number': self.number
+            'number': self.number,
+            'robbed': self.robbed
         }
 
-class Settlement:
-    def __init__(self, player_id, player_name):
+class Vertex:
+    def __init__(self, position, player_id=None, player_name=None):
+        self.position = position
         self.player_id = player_id
         self.player_name = player_name
         self.upgraded = False
+        
+    def set_player(self, player_id, player_name):
+        self.player_id = player_id
+        self.player_name = player_name
     
     def upgrade(self):
         self.upgraded = True
 
     def to_dict(self):
         return {
+            'position': self.position,
             'playerName': self.player_name,
             'upgraded': self.upgraded
         }
@@ -70,41 +83,37 @@ class Settlement:
 class Board:
     def __init__(self):
         self.hexes = self.setup_hexes()
-        self.settlements = {}  # Maps locations to players
-        self.roads = []  # List of roads
-
+        self.vertices = [Vertex(i) for i in range(NUM_VERTICES)]  
+        self.roads = []
+        
     def setup_hexes(self):
         board_dict = generate_valid_board()
         hexes = []
         for position, hex_data in board_dict.items():
-            hexes.append(Hex(hex_data['resource'], hex_data['value']))
+            hexes.append(Hex(position, hex_data['resource'], hex_data['value']))
         return hexes
 
-    def place_settlement(self, player, location):
-        # Simplified: Assume valid location
-        self.settlements[location] = player
+    def place_settlement(self, player_id, player_name, location):
+        if location < 0 or location >= 54:
+            return
+        self.vertices[location].set_player(player_id, player_name)
         
     def to_dict(self):
-        settlements = []
-        for position, settlement in self.settlements:
-            settle_dict = settlement.to_dict()
-            settle_dict['position'] = position
-            settlements.append(settle_dict)
+        vertices = []
+        for position, vertex in enumerate(self.vertices):
+            vert_dict = vertex.to_dict()
+            vert_dict['position'] = position
+            vertices.append(vert_dict)
         return {
             'hexes': [hex.to_dict() for hex in self.hexes],
-            'settlements': settlements,
+            'vertices': [vertex.to_dict() for vertex in self.vertices],
             'roads': self.roads
         }
-
-    def display(self):
-        board_dict = {i: {'resource': hex.resource, 'value': hex.number} for i, hex in enumerate(self.hexes)}
-        display('resource', board_dict)
-        display('value', board_dict)
 
 
 class Game:
     def __init__(self, players):
-        self.players = [Player(name, user_id) for (name, user_id) in players]
+        self.players = [Player(name, user_id, COLORS[len(self.players)]) for (name, user_id) in players]
         self.host = self.players[0] if self.players else None
         self.board = Board()
         self.roll = (1, 1)
@@ -114,7 +123,7 @@ class Game:
         if self.current_turn != -1:
             return False
 
-        new_player = Player(username, user_id)
+        new_player = Player(username, user_id, COLORS[len(self.players)])
         if not self.players:
             self.set_host(new_player)
         self.players.append(new_player)
@@ -138,11 +147,10 @@ class Game:
             roll = self.roll
         for hex in self.board.hexes:
             if hex.number == roll:
-                for location, player in self.board.settlements.items():
-                    if (
-                        location in hex.resource
-                    ):  # Simplified: check if settlement is on hex
-                        player.collect_resources(hex.resource, 1)
+                for location in VERTEX_ADJACENCIES[hex.index]:
+                    player_id = self.board.vertices[location].player_id
+                    if player_id is not None:
+                        self.get_player(player_id).collect_resources(hex.resource, 1)
 
     def take_turn(self):
         roll = self.roll_dice()

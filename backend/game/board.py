@@ -1,20 +1,17 @@
 import random
 
 # CONSTANTS
-num_hexes = 19
-positions = range(0, num_hexes)
+NUM_HEXES = 19
+NUM_VERTICES = 54
+POSITIONS = range(0, NUM_HEXES)
 
-probabilities = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
+PROBABILITIES = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
 
-resource_dist = {
+RESOURCE_DIST = {
     'brick': 3, 'wood': 4, 'sheep': 4, 'wheat': 4, 'ore': 3, 'desert': 1
 }
 
-resource_map = {
-    'brick': 'B', 'wood': 'L', 'sheep': 'S', 'wheat': 'W', 'ore': 'O', 'desert': 'D'
-}
-
-adjacencies = {
+HEX_ADJACENCIES = {
     0: [1, 3, 4],
     1: [0, 2, 4, 5],
     2: [1, 5, 6],
@@ -36,38 +33,44 @@ adjacencies = {
     18: [14, 15, 17]
 }
 
-def display(type, board):
-    display_format = """
-----X-X-X----
----X-X-X-X---
---X-X-X-X-X--
----X-X-X-X---
-----X-X-X----
-"""
-    pos_index = 0
-    print("Board " + type + " layout: ")
-    for char in display_format:
-        if (char == '-' or char == '\n'):
-            print(char, end='')
-        else:
-            curr_token = board[pos_index][type]
-            if(curr_token is None):
-                curr_token = '∅'
-            elif(type == 'value'):
-                curr_token = hex(curr_token)[2:]
-            elif(type == 'resource'):
-                curr_token = resource_map[curr_token]
-            print(curr_token, end = '')
-            pos_index += 1
-    print() 
+VERTEX_ADJACENCIES = {
+    0: [0, 1, 2, 3, 4, 5],
+    1: [6, 7, 0, 5, 8, 9],
+    2: [10, 11, 6, 9, 12, 13],
+  3: [14, 15, 16, 17, 2, 1],
+  4: [18, 19, 14, 1, 0, 7],
+  5: [20, 21, 18, 7, 6, 11],
+  6: [22, 23, 20, 11, 10, 24],
+  7: [25, 26, 27, 28, 16, 15],
+  8: [29, 30, 25, 15, 14, 19],
+  9: [31, 32, 29, 19, 18, 21],
+  10: [33, 34, 31, 21, 20, 23],
+  11: [35, 36, 33, 23, 22, 37],
+  12: [38, 39, 40, 26, 25, 30],
+  13: [41, 42, 38, 30, 29, 32],
+  14: [43, 44, 41, 32, 31, 34],
+  15: [45, 46, 43, 34, 33, 36],
+  16: [47, 48, 49, 39, 38, 42],
+  17: [50, 51, 47, 42, 41, 44],
+  18: [52, 53, 50, 44, 43, 46]
+}
 
+HEXES_FOR_VERTEX = {}
+for hex, vertices in VERTEX_ADJACENCIES.items():
+    for v in vertices:
+        if v not in HEXES_FOR_VERTEX:
+            HEXES_FOR_VERTEX[v] = []
+        HEXES_FOR_VERTEX[v].append(hex)
+
+def get_hexes_for_vertex(location):
+    return HEXES_FOR_VERTEX[location]
 
 def is_valid_board(board):
     """ Checks if a board is valid by checking
     if a 6 and 8 are adjacent to one another. """
     for pos, tile in board.items():
         if tile['value'] in [6, 8]:
-            for neighbor in adjacencies[pos]:
+            for neighbor in HEX_ADJACENCIES[pos]:
                 if board[neighbor]['value'] in [6, 8]:
                     return False
     return True
@@ -78,18 +81,18 @@ def generate_board():
     the desert has no number attached to it. """
     # full list of resources based on dist
     resources = []
-    for resource, count in resource_dist.items():
+    for resource, count in RESOURCE_DIST.items():
         resources.extend([resource] * count)
     random.shuffle(resources)
 
     # shuffling probability list
-    shuffled_probabilities = probabilities[:]
+    shuffled_probabilities = PROBABILITIES[:]
     random.shuffle(shuffled_probabilities)
 
     # rndom resource to number assignment
     board = {}
     prob_index = 0
-    for position in positions:
+    for position in POSITIONS:
         resource = resources.pop()
         val = None
         if resource != 'desert':
