@@ -98,6 +98,11 @@ class Board:
             return
         self.vertices[location].set_player(player_id, player_name)
         
+    def upgrade_to_city(self, player_id, player_name, location):
+        if location < 0 or location >= 54:
+            return
+        self.vertices[location].set_player(player_id, player_name)
+        
     def to_dict(self):
         vertices = []
         for position, vertex in enumerate(self.vertices):
@@ -145,6 +150,7 @@ class Game:
     def distribute_resources(self, roll=None):
         if roll is None:
             roll = self.roll
+        roll = sum(roll)
         for hex in self.board.hexes:
             if hex.number == roll:
                 for location in VERTEX_ADJACENCIES[hex.index]:

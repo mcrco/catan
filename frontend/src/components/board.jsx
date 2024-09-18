@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
+import "@pixi/events";
 import { Stage, Container, Graphics, Text } from "@pixi/react";
 import * as PIXI from "pixi.js";
 import _ from "lodash";
+import io from "socket.io-client";
+import { Modal, Button } from "react-bootstrap";
 
 const HEX_RADIUS = 80;
 
@@ -37,7 +40,6 @@ const HEX_POSITIONS = [
 const VERTEX_POSITIONS = [];
 // Map between index of a hex and the indices of its vertices
 const VERTEX_ADJACENCIES = {};
-
 for (let i = 0; i < HEX_POSITIONS.length; i++) {
     VERTEX_ADJACENCIES[i] = [];
 
@@ -73,7 +75,20 @@ for (let i = 0; i < HEX_POSITIONS.length; i++) {
     }
 }
 
-const CatanBoard = ({ gameState }) => {
+const SETTLEMENT_SIZE = 15;
+const CITY_SIZE = 20;
+
+const socket = io();
+
+const placeSettlement = (vertexIndex) => {
+    socket.emit("place_settlement", { vertexIndex });
+};
+
+const upgradeToCity = (vertexIndex) => {
+    socket.emit("upgrade_to_city", { vertexIndex });
+};
+
+const CatanBoard = ({ gameState, username }) => {
     let board = gameState.board;
     let hexes = board.hexes.map((hex, index) => (
         <Container
@@ -86,8 +101,8 @@ const CatanBoard = ({ gameState }) => {
         </Container>
     ));
 
-    let settlements = board.vertices.map((vertex, index) => (
-        <Settlement
+    let vertices = board.vertices.map((vertex, index) => (
+        <Vertex
             key={`vertex-${index}`}
             x={VERTEX_POSITIONS[vertex.position].x}
             y={VERTEX_POSITIONS[vertex.position].y}
@@ -98,6 +113,13 @@ const CatanBoard = ({ gameState }) => {
                     : 0xffffff
             }
             isOccupied={!!vertex.playerName}
+            isCity={vertex.upgraded}
+            vertexIndex={index}
+            gameState={gameState}
+            clickable={
+                username === gameState.playerTurn &&
+                (username === vertex.playerName || !vertex.playerName)
+            }
         />
     ));
     return (
@@ -108,7 +130,9 @@ const CatanBoard = ({ gameState }) => {
         >
             <Container x={600} y={400}>
                 {hexes}
-                {settlements}
+            </Container>
+            <Container x={600} y={400}>
+                {vertices}
             </Container>
         </Stage>
     );
@@ -166,23 +190,126 @@ function getHexColor(resource) {
     return colorMap[resource] || 0xffffff;
 }
 
-const Settlement = ({ x, y, color, isOccupied }) => {
+const Vertex = ({
+    x,
+    y,
+    color,
+    isOccupied,
+    isCity,
+    clickable,
+    vertexIndex,
+    gameState,
+}) => {
+    const [showModal, setShowModal] = useState(false);
+
+    const handleClick = () => {
+        console.log(canPlaceSettlement());
+        if (isOccupied) {
+            if (!isCity && canUpgradeToCity()) {
+                setShowModal(true);
+            }
+        } else if (canPlaceSettlement()) {
+            setShowModal(true);
+        }
+    };
+
+    const canUpgradeToCity = () => {
+        return (
+            gameState.currentTurn < 2 * gameState.players.length ||
+            (gameState.resources.ore >= 3 && gameState.resources.wheat >= 2)
+        );
+    };
+
+    const canPlaceSettlement = () => {
+        return (
+            gameState.currentTurn < 2 * gameState.players.length ||
+            (gameState.resources.wood >= 1 &&
+                gameState.resources.brick >= 1 &&
+                gameState.resources.wheat >= 1 &&
+                gameState.resources.sheep >= 1)
+        );
+    };
+
+    const handleConfirm = () => {
+        if (isOccupied && !isCity) {
+            upgradeToCity(vertexIndex);
+        } else {
+            placeSettlement(vertexIndex);
+        }
+        setShowModal(false);
+    };
+
     return (
-        <Graphics
-            x={x}
-            y={y}
-            draw={(g) => {
-                g.clear();
-                if (isOccupied) {
-                    g.beginFill(color);
-                    g.drawCircle(0, 0, 5);
-                    g.endFill();
-                } else {
-                    g.lineStyle(2, 0xffffff);
-                    g.drawCircle(0, 0, 5);
-                }
-            }}
-        />
+        <>
+            <Graphics
+                x={x}
+                y={y}
+                interactive={true}
+                buttonMode={true}
+                onClick={() => {
+                    console.log("HIHIHIHIH");
+                }}
+                mousemove={() => {
+                    console.log("HIHIHIHIH");
+                }}
+                mousedown={() => {
+                    console.log("HIHIHIHIH");
+                }}
+                click={() => {
+                    console.log("HIHIHIHIH");
+                }}
+                draw={(g) => {
+                    g.clear();
+                    if (isOccupied) {
+                        g.beginFill(color);
+                        if (isCity) {
+                            g.drawRect(
+                                -CITY_SIZE / 2,
+                                -CITY_SIZE / 2,
+                                CITY_SIZE,
+                                CITY_SIZE
+                            );
+                        } else {
+                            g.drawRect(
+                                -SETTLEMENT_SIZE / 2,
+                                -SETTLEMENT_SIZE / 2,
+                                SETTLEMENT_SIZE,
+                                SETTLEMENT_SIZE
+                            );
+                        }
+                        g.endFill();
+                    } else if (clickable) {
+                        g.lineStyle(2, 0xffffff);
+                        g.drawCircle(0, 0, 5);
+                    }
+                }}
+            />
+            <Modal show={showModal} onHide={() => setShowModal(false)}>
+                <Modal.Header closeButton>
+                    <Modal.Title>
+                        {isOccupied ? "Upgrade to City" : "Place Settlement"}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    Are you sure you want to{" "}
+                    {isOccupied
+                        ? "upgrade this settlement to a city"
+                        : "place a settlement here"}
+                    ?
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button
+                        variant="secondary"
+                        onClick={() => setShowModal(false)}
+                    >
+                        Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleConfirm}>
+                        Confirm
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+        </>
     );
 };
 

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { io } from "socket.io-client";
-import * as PIXI from "pixi.js";
 import CatanBoard from "../components/board";
 
 const socket = io();
@@ -65,7 +64,9 @@ function Game() {
 
             {gameState && gameState.currentTurn >= 0 && (
                 <div>
-                    {gameState.board && <CatanBoard gameState={gameState} />}
+                    {gameState.board && (
+                        <CatanBoard gameState={gameState} username={username} />
+                    )}
                     <h2>Players and Points:</h2>
                     <ul>
                         {gameState.players.map((player, index) => (

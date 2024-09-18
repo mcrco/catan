@@ -111,6 +111,10 @@ def roll_dice(data):
         return
 
     game = games.get(game_code, None)
+    
+    # make sure it isn't an initial settlement turn
+    if game.current_turn < 2 * len(game.players):
+        return
 
     roll = game.roll_dice()
     game.distribute_resources(roll)
@@ -143,11 +147,34 @@ def place_settlement(data):
             return
 
     game.board.place_settlement(user_id, player.name, location)
-    player.settlements.append(location)
+    player.build_settlement(location)
     if len(player.settlements) == 2:
         for hex_index in get_hexes_for_vertex(location):
             hex = game.board.hexes[hex_index]
             player.collect_resources(hex.resource, 1)
+
+    for player in game.players:
+        emit('game_update', game.to_dict(player.id), to=player.id)
+
+@socketio.on('upgrade_to_city')
+def upgrade_to_city(data):
+    user_id = data['userId']
+    game_code = data['gameCode']
+    check_game_player(game_code, user_id)
+
+    try:
+        location = int(data['location'])
+    except ValueError:
+        return
+    
+    game = games[game_code]
+    player = game.get_player(user_id)
+
+    # check if player has resources for city
+    if player.resources["wheat"] < 2 or player.resources["ore"] < 3:
+        return
+
+    game.board.upgrade_to_city(user_id, player.name, location)
 
     for player in game.players:
         emit('game_update', game.to_dict(player.id), to=player.id)
